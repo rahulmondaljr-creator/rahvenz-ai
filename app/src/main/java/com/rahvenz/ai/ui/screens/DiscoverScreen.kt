@@ -30,9 +30,8 @@ private data class Capability(val title: String, val status: String)
 fun DiscoverScreen() {
     val capabilities = listOf(
         Capability("Local commands (time, date, greetings, stop)", "Available now"),
-        Capability("Hindi text-to-speech replies", "Available now"),
-        Capability("Hindi voice recognition", "Phase 2"),
-        Capability("Open apps (Chrome, YouTube, Settings...)", "Phase 2"),
+        Capability("Hindi voice recognition — tap the orb and speak", "Available now"),
+        Capability("Open apps (Chrome, YouTube, Settings, WhatsApp...)", "Available now"),
         Capability("Gemini & Groq connectors (bring your own key)", "Phase 3"),
         Capability("AI chat with conversation history", "Phase 4"),
         Capability("Accessibility actions (scroll, back, tap)", "Phase 5"),
