@@ -97,7 +97,7 @@ fun AssistantScreen(vm: AssistantViewModel) {
                     VoiceState.Idle -> "Tap the orb and speak in Hindi"
                     VoiceState.Listening -> "Listening… speak now"
                     VoiceState.Processing -> "Processing…"
-                    is VoiceState.Error -> voiceErrorHint(voiceState.code)
+                    is VoiceState.Error -> voiceErrorHint((voiceState as VoiceState.Error).code)
                 },
                 color = if (isListening) Crimson else TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
