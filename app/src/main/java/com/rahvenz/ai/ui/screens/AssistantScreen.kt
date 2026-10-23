@@ -125,7 +125,6 @@ fun AssistantScreen(vm: AssistantViewModel) {
         Spacer(Modifier.height(28.dp))
 
         if (callActive) {
-            // Red hang-up button, like ending a phone call.
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -178,7 +177,8 @@ fun AssistantScreen(vm: AssistantViewModel) {
     }
 
     if (showVoiceDialog) {
-        val voices = vm.voiceNames()
+        val recommended = vm.recommendedVoiceNames()
+        val others = vm.otherVoiceNames()
         AlertDialog(
             onDismissRequest = { showVoiceDialog = false },
             confirmButton = {
@@ -188,12 +188,25 @@ fun AssistantScreen(vm: AssistantViewModel) {
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    if (voices.isEmpty()) {
-                        Text("No extra voices found on this device.", color = TextSecondary)
+                    Text("★ Recommended Hindi voices", color = Crimson, style = MaterialTheme.typography.titleSmall)
+                    if (recommended.isEmpty()) {
+                        Text("No Hindi neural voice found.", color = TextSecondary)
                     } else {
-                        voices.forEach { name ->
+                        recommended.forEach { name ->
+                            TextButton(onClick = {
+                                vm.selectVoice(name)
+                                showVoiceDialog = false
+                            }) { Text(name, color = TextPrimary) }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("Other voices", color = TextSecondary, style = MaterialTheme.typography.titleSmall)
+                    if (others.isEmpty()) {
+                        Text("None.", color = TextSecondary)
+                    } else {
+                        others.forEach { name ->
                             TextButton(onClick = {
                                 vm.selectVoice(name)
                                 showVoiceDialog = false
@@ -236,6 +249,6 @@ private fun voiceErrorHint(code: Int): String = when (code) {
     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission missing ($code)."
     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech heard ($code). Tap and speak right away."
     SpeechRecognizer.ERROR_CLIENT -> "Speech service error ($code). Enable 'Google voice typing' in Settings."
-    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy ($code). Tap the orb again."
+    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy ($code). One moment…"
     else -> "Couldn't hear you (code $code)."
 }
