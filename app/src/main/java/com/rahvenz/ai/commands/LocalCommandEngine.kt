@@ -6,11 +6,12 @@ import java.util.Locale
 
 sealed interface LocalResult {
     data class Reply(val hindiText: String) : LocalResult
+    data class Action(val action: PhoneAction) : LocalResult
     data object Unknown : LocalResult
 }
 
 /**
- * Phase 1 offline command engine.
+ * Phase 2 offline command engine.
  * Understands short Hindi / Hinglish commands and answers in Hindi.
  * Anything unrecognized returns Unknown so the caller can ask the user
  * to repeat or clarify in Hindi (never guess and act).
@@ -26,6 +27,22 @@ object LocalCommandEngine {
         return when {
             has("ruk", "रुक", "ruk jao", "रुको", "chup", "चुप", "bas karo", "बस करो", "stop") ->
                 LocalResult.Reply("ठीक है, मैं रुक गया।")
+
+            has("kholo", "खोलो", "khol do", "खोल दो", "khul", "khul jao") -> {
+                val target = t
+                    .replace("kholo", "")
+                    .replace("khol do", "")
+                    .replace("khul jao", "")
+                    .replace("khul", "")
+                    .replace("खोलो", "")
+                    .replace("खोल दो", "")
+                    .trim()
+                if (target.isNotEmpty()) {
+                    LocalResult.Action(PhoneAction.OpenTarget(target))
+                } else {
+                    LocalResult.Unknown
+                }
+            }
 
             has("samay", "समय", "time") &&
                 has("kya", "क्या", "batao", "बताओ", "bata", "बता", "hai", "है") ->
@@ -53,7 +70,7 @@ object LocalCommandEngine {
                 LocalResult.Reply("आपका स्वागत है! और कुछ मदद चाहिए तो बताइए।")
 
             has("madad", "मदद", "help") ->
-                LocalResult.Reply("अभी मैं ये काम कर सकता हूँ: समय और तारीख बताना, और आपसे बातचीत करना। आगे के चरणों में ऐप खोलना, आवाज़ पहचान और AI जवाब जुड़ेंगे।")
+                LocalResult.Reply("मैं ये काम कर सकता हूँ: समय और तारीख बताना, Chrome, YouTube, WhatsApp, Gmail, Maps, Play Store, Photos, Settings, Camera खोलना। बोलिए, जैसे: Chrome खोलो।")
 
             else -> LocalResult.Unknown
         }
