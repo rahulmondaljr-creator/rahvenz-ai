@@ -24,6 +24,24 @@ class LocalCommandEngineTest {
     }
 
     @Test
+    fun `open chrome command returns action`() {
+        val result = LocalCommandEngine.handle("chrome kholo")
+        assertTrue(result is LocalResult.Action)
+    }
+
+    @Test
+    fun `open youtube in devanagari returns action`() {
+        val result = LocalCommandEngine.handle("यूट्यूब खोलो")
+        assertTrue(result is LocalResult.Action)
+    }
+
+    @Test
+    fun `open settings command returns action`() {
+        val result = LocalCommandEngine.handle("settings kholo")
+        assertTrue((result as LocalResult.Action).action is PhoneAction.OpenTarget)
+    }
+
+    @Test
     fun `unknown input returns Unknown`() {
         assertTrue(LocalCommandEngine.handle("xyzzy qwerty plugh") is LocalResult.Unknown)
     }
