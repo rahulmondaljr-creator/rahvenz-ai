@@ -10,12 +10,6 @@ sealed interface LocalResult {
     data object Unknown : LocalResult
 }
 
-/**
- * Phase 2 offline command engine.
- * Understands short Hindi / Hinglish commands and answers in Hindi.
- * Anything unrecognized returns Unknown so the caller can ask the user
- * to repeat or clarify in Hindi (never guess and act).
- */
 object LocalCommandEngine {
 
     private val hindiLocale = Locale("hi", "IN")
@@ -28,14 +22,17 @@ object LocalCommandEngine {
             has("ruk", "रुक", "ruk jao", "रुको", "chup", "चुप", "bas karo", "बस करो", "stop") ->
                 LocalResult.Reply("ठीक है, मैं रुक गया।")
 
-            has("kholo", "खोलो", "khol do", "खोल दो", "khul", "khul jao") -> {
+            has("kholo", "खोलो", "khol do", "खोल दो", "khul", "khulo", "खुलो", "khuloo") -> {
                 val target = t
                     .replace("kholo", "")
                     .replace("khol do", "")
                     .replace("khul jao", "")
+                    .replace("khuloo", "")
+                    .replace("khulo", "")
                     .replace("khul", "")
                     .replace("खोलो", "")
                     .replace("खोल दो", "")
+                    .replace("खुलो", "")
                     .trim()
                 if (target.isNotEmpty()) {
                     LocalResult.Action(PhoneAction.OpenTarget(target))
@@ -70,7 +67,7 @@ object LocalCommandEngine {
                 LocalResult.Reply("आपका स्वागत है! और कुछ मदद चाहिए तो बताइए।")
 
             has("madad", "मदद", "help") ->
-                LocalResult.Reply("मैं ये काम कर सकता हूँ: समय और तारीख बताना, Chrome, YouTube, WhatsApp, Gmail, Maps, Play Store, Photos, Settings, Camera खोलना। बोलिए, जैसे: Chrome खोलो।")
+                LocalResult.Reply("मैं ये काम कर सकता हूँ: समय और तारीख बताना, Chrome, YouTube, WhatsApp, Gmail, Maps, Play Store, Photos, Settings, Camera खोलना। बोलिए, जैसे: YouTube खोलो।")
 
             else -> LocalResult.Unknown
         }
