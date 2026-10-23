@@ -112,7 +112,7 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
         tts.stop()
         val app = getApplication<Application>()
         if (!SpeechRecognizer.isRecognitionAvailable(app)) {
-            _voiceState.value = VoiceState.Error(SpeechRecognizer.ERROR_CANNOT_RECOGNIZE_SPEECH)
+            _voiceState.value = VoiceState.Error(SpeechRecognizer.ERROR_NO_MATCH)
             return
         }
         if (recognizer == null) {
@@ -123,7 +123,6 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERRED, arrayOf("hi-IN", "en-IN"))
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200)
