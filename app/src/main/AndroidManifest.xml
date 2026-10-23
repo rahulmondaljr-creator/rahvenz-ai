@@ -1,8 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- NOTE: deliberately no INTERNET permission in Phase 1.
-         Phase 3 adds it together with the AI connectors. -->
+    <!-- Microphone: only used while you hold the orb and speak. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Needed by the system speech-recognition service on most devices. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <!-- Package visibility (Android 11+): which apps RAHVENZ may open. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <package android:name="com.android.chrome" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.google.android.gm" />
+        <package android:name="com.google.android.apps.maps" />
+        <package android:name="com.android.vending" />
+        <package android:name="com.google.android.apps.photos" />
+    </queries>
 
     <application
         android:allowBackup="false"
