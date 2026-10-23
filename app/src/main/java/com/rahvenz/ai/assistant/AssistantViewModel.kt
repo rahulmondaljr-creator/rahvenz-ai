@@ -25,6 +25,7 @@ sealed interface VoiceState {
     data object Idle : VoiceState
     data object Listening : VoiceState
     data object Processing : VoiceState
+    data object Speaking : VoiceState
     data class Error(val code: Int) : VoiceState
 }
 
@@ -48,6 +49,33 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
     private val _voiceState = MutableStateFlow<VoiceState>(VoiceState.Idle)
     val voiceState: StateFlow<VoiceState> = _voiceState.asStateFlow()
 
+    /** Call-style session: while true, RAHVENZ keeps the conversation going. */
+    private val _callActive = MutableStateFlow(false)
+    val callActive: StateFlow<Boolean> = _callActive.asStateFlow()
+
+    init {
+        // When RAHVENZ finishes speaking during a call, it starts listening again.
+        tts.onFinishedSpeaking = {
+            if (_callActive.value) {
+                startListening()
+            } else if (_voiceState.value is VoiceState.Speaking) {
+                _voiceState.value = VoiceState.Idle
+            }
+        }
+    }
+
+    fun startCall() {
+        _callActive.value = true
+        startListening()
+    }
+
+    fun endCall() {
+        _callActive.value = false
+        recognizer?.cancel()
+        tts.stop()
+        _voiceState.value = VoiceState.Idle
+    }
+
     fun sendUserText(text: String) {
         val cleaned = text.trim()
         if (cleaned.isEmpty()) return
@@ -55,28 +83,36 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
         _messages.value = _messages.value + ChatMessage(nextId++, cleaned, isUser = true)
 
         when (val result = LocalCommandEngine.handle(cleaned)) {
-            is LocalResult.Reply -> {
-                addAssistantMessage(result.hindiText)
-                tts.speak(result.hindiText)
-            }
+            is LocalResult.Reply -> respond(result.hindiText)
             is LocalResult.Action -> {
                 val outcome = AppLauncher.perform(getApplication(), result.action)
-                addAssistantMessage(outcome.hindiText)
-                tts.speak(outcome.hindiText)
+                respond(outcome.hindiText)
             }
             LocalResult.Unknown -> {
-                val ask = "मुझे यह समझ नहीं आया। कृपया हिंदी में दोहराएँ या स्पष्ट करें।"
-                addAssistantMessage(ask)
-                tts.speak(ask)
+                respond("मुझे यह समझ नहीं आया। कृपया हिंदी में दोहराएँ या स्पष्ट करें।")
             }
         }
+    }
+
+    private fun respond(hindiText: String) {
+        addAssistantMessage(hindiText)
+        _voiceState.value = VoiceState.Speaking
+        tts.speak(hindiText)
     }
 
     private fun addAssistantMessage(text: String) {
         _messages.value = _messages.value + ChatMessage(nextId++, text, isUser = false)
     }
 
-    // ---------- Voice input (Phase 2) ----------
+    // ---------- Voice picker (free device voices) ----------
+
+    fun voiceNames(): List<String> = tts.voiceNames()
+    fun currentVoiceName(): String = tts.currentVoiceName()
+    fun selectVoice(name: String) {
+        tts.setVoiceByName(name)
+    }
+
+    // ---------- Speech recognition ----------
 
     private val recognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
@@ -95,13 +131,11 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
             val text = results
                 ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 ?.firstOrNull()
-            _voiceState.value = VoiceState.Idle
             if (!text.isNullOrBlank()) {
                 sendUserText(text)
             } else {
-                val ask = "मैंने सुना नहीं। कृपया फिर से बोलिए।"
-                addAssistantMessage(ask)
-                tts.speak(ask)
+                _voiceState.value = VoiceState.Idle
+                respond("मैंने सुना नहीं। कृपया फिर से बोलिए।")
             }
         }
         override fun onPartialResults(partialResults: Bundle?) {}
@@ -133,9 +167,8 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
         recognizer?.startListening(intent)
     }
 
-    fun stopListening() {
-        recognizer?.stopListening()
-        _voiceState.value = VoiceState.Idle
+    fun retryListening() {
+        if (_callActive.value) startListening()
     }
 
     fun stopAssistant() = tts.stop()
