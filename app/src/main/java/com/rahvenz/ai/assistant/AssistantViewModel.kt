@@ -3,6 +3,8 @@ package com.rahvenz.ai.assistant
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -34,6 +36,7 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
     private val tts = HindiTts(application)
     private var nextId = 1L
     private var recognizer: SpeechRecognizer? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private val _messages = MutableStateFlow(
         listOf(
@@ -49,12 +52,10 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
     private val _voiceState = MutableStateFlow<VoiceState>(VoiceState.Idle)
     val voiceState: StateFlow<VoiceState> = _voiceState.asStateFlow()
 
-    /** Call-style session: while true, RAHVENZ keeps the conversation going. */
     private val _callActive = MutableStateFlow(false)
     val callActive: StateFlow<Boolean> = _callActive.asStateFlow()
 
     init {
-        // When RAHVENZ finishes speaking during a call, it starts listening again.
         tts.onFinishedSpeaking = {
             if (_callActive.value) {
                 startListening()
@@ -71,6 +72,7 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun endCall() {
         _callActive.value = false
+        mainHandler.removeCallbacksAndMessages(null)
         recognizer?.cancel()
         tts.stop()
         _voiceState.value = VoiceState.Idle
@@ -104,9 +106,19 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
         _messages.value = _messages.value + ChatMessage(nextId++, text, isUser = false)
     }
 
-    // ---------- Voice picker (free device voices) ----------
+    // ---------- Voice picker ----------
 
-    fun voiceNames(): List<String> = tts.voiceNames()
+    /** Google's high-quality Hindi neural voices (hi-in-x-hi...). */
+    fun recommendedVoiceNames(): List<String> =
+        tts.availableVoices()
+            .map { it.name ?: "" }
+            .filter { it.startsWith("hi-in-x-hi") }
+
+    fun otherVoiceNames(): List<String> =
+        tts.availableVoices()
+            .map { it.name ?: "Default voice" }
+            .filter { !(it.startsWith("hi-in-x-hi")) }
+
     fun currentVoiceName(): String = tts.currentVoiceName()
     fun selectVoice(name: String) {
         tts.setVoiceByName(name)
@@ -125,7 +137,19 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
             _voiceState.value = VoiceState.Processing
         }
         override fun onError(error: Int) {
-            _voiceState.value = VoiceState.Error(error)
+            when (error) {
+                // These mean "nothing understood" — just keep listening, like a call.
+                SpeechRecognizer.ERROR_NO_MATCH,
+                SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
+                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
+                    if (_callActive.value) {
+                        scheduleRetry(delayMs = 500)
+                    } else {
+                        _voiceState.value = VoiceState.Error(error)
+                    }
+                }
+                else -> _voiceState.value = VoiceState.Error(error)
+            }
         }
         override fun onResults(results: Bundle?) {
             val text = results
@@ -133,13 +157,24 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
                 ?.firstOrNull()
             if (!text.isNullOrBlank()) {
                 sendUserText(text)
+            } else if (_callActive.value) {
+                scheduleRetry(delayMs = 500)
             } else {
-                _voiceState.value = VoiceState.Idle
                 respond("मैंने सुना नहीं। कृपया फिर से बोलिए।")
             }
         }
         override fun onPartialResults(partialResults: Bundle?) {}
         override fun onEvent(eventType: Int, params: Bundle?) {}
+    }
+
+    /** Silently restarts listening after a short pause — keeps the call alive. */
+    private fun scheduleRetry(delayMs: Long) {
+        _voiceState.value = VoiceState.Listening
+        mainHandler.postDelayed({
+            if (_callActive.value) {
+                startListening()
+            }
+        }, delayMs)
     }
 
     fun startListening() {
@@ -174,6 +209,7 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
     fun stopAssistant() = tts.stop()
 
     override fun onCleared() {
+        mainHandler.removeCallbacksAndMessages(null)
         recognizer?.destroy()
         recognizer = null
         tts.shutdown()
