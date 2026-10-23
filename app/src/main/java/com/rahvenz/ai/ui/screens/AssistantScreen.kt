@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -96,7 +97,7 @@ fun AssistantScreen(vm: AssistantViewModel) {
                     VoiceState.Idle -> "Tap the orb and speak in Hindi"
                     VoiceState.Listening -> "Listening… speak now"
                     VoiceState.Processing -> "Processing…"
-                    is VoiceState.Error -> "Couldn't hear you. Tap to try again."
+                    is VoiceState.Error -> voiceErrorHint(voiceState.code)
                 },
                 color = if (isListening) Crimson else TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
@@ -168,4 +169,15 @@ fun AssistantScreen(vm: AssistantViewModel) {
             },
         )
     }
+}
+
+private fun voiceErrorHint(code: Int): String = when (code) {
+    SpeechRecognizer.ERROR_NETWORK,
+    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network error ($code). Turn on mobile data and try again."
+    SpeechRecognizer.ERROR_NO_MATCH -> "Didn't catch that ($code). Speak a bit louder, then try again."
+    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission missing ($code). Allow it in Settings."
+    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech heard ($code). Tap and speak right away."
+    SpeechRecognizer.ERROR_CLIENT -> "Speech service error ($code). Enable 'Google voice typing' in Settings > Languages & input."
+    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy ($code). Wait a second and tap again."
+    else -> "Couldn't hear you (code $code). Tap to try again."
 }
